@@ -1,7 +1,4 @@
-
 from ast import Try
-import re
-
 
 class Person(object):
 
@@ -63,10 +60,5 @@ class Person(object):
     address = property(get_address, set_address)
     
     def __str__(self):
-        return ("%s %d %s %s" %(self._name, self._age, self._address, self._email))
+        return ("name = %s\nage = %d\naddress = %s\nemail =  %s\n" %(self._name, self._age, self._address, self._email))
 
-try:
-    raul = Person("Raul", 20, "Fagaras", "raulandrei2019@gmail.com")
-    print(raul)
-except TypeError:
-    print("wtf")
