@@ -12,6 +12,7 @@ class Student(Person):
         self._id = id
         self._password = password
         self._current_year = current_year
+        #is this the right way to give to this paramater the list ?
         self._subjects = subjects
         self._marks_list = [0] * len(self._subjects)
 
@@ -53,11 +54,13 @@ class Student(Person):
 
     password = property(get_password, set_password)
 
+    #here is the problem
     def get_total_credits(self):
        total_credits = 0
-
+        #so I would like to be able to access the number of credits for each subject at index i
        for i in range(0, len(self._marks_list)):
            if self._marks_list[i] >= 5:
+            #however i cannot do that, why?
             total_credits = total_credits + self._subject[i].get_credits_worth
 
        return total_credits    
