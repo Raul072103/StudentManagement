@@ -16,6 +16,6 @@ derek = Teacher("Derek Bridge", 50, "Cork", "derekbridge@ucc.ie", "100101001", "
 
 racu = Headmaster("Maria Racu", 45, "Fagaras", "maria.racu@ucc.ie", "100000001", "MariaRacu", [subject1, subject2])
 
-print(racu)
+print(type(racu) == Headmaster)
 
 
