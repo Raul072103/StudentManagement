@@ -1,5 +1,3 @@
-from locale import currency
-from re import sub
 from Person import Person
 from Subject import Subject
 
@@ -7,14 +5,13 @@ from Subject import Subject
 class Student(Person):
 
     def __init__(self, name: str, age: int, address: str, email: str,
-                  id: str, password: str, current_year: int, subjects: Subject):
+                  id: str, password: str, current_year: int, subjects: list, marks: float):
         super().__init__(name, age, address, email)
         self._id = id
         self._password = password
         self._current_year = current_year
-        #is this the right way to give to this paramater the list ?
         self._subjects = subjects
-        self._marks_list = [0] * len(self._subjects)
+        self._marks_list = marks
 
 
     def get_id(self):
@@ -54,14 +51,12 @@ class Student(Person):
 
     password = property(get_password, set_password)
 
-    #here is the problem
     def get_total_credits(self):
        total_credits = 0
-        #so I would like to be able to access the number of credits for each subject at index i
-       for i in range(0, len(self._marks_list)):
+       i = 0
+       for subject in self._subjects:
            if self._marks_list[i] >= 5:
-            #however i cannot do that, why?
-            total_credits = total_credits + self._subject[i].get_credits_worth
+                total_credits = total_credits + subject.credits_worth
 
        return total_credits    
            
