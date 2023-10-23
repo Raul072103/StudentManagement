@@ -5,13 +5,16 @@ from Subject import Subject
 class Student(Person):
 
     def __init__(self, name: str, age: int, address: str, email: str,
-                  id: str, password: str, current_year: int, subjects: list, marks: float):
+                  id: str, password: str, current_year: int, subjects: list, marks: float = 0):
         super().__init__(name, age, address, email)
         self._id = id
         self._password = password
         self._current_year = current_year
         self._subjects = subjects
-        self._marks_list = marks
+        if marks == 0: #this means no marks have been given yet
+            self._marks_list = [0] * len(subjects)
+        else:
+            self._marks_list = marks
 
 
     def get_id(self):
