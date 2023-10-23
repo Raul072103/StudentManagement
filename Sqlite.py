@@ -379,17 +379,17 @@ if __name__ == '__main__':
     derek4 = Teacher("Derek Bridge", 50, "Cork", "derekbridge@ucc.ie", "100101004", "TheFinalBoss", [subject1, subject2, subject3])
 
     raul = Student("Spatariu Raul", 20, "Fagaras", "raulandrei2019@gmail.com", "100000323",
-                "superSecretPassword", 2, [subject1, subject2, subject3], [5.6, 7.8, 9.0])
+                "superSecretPassword", 2, {subject1.name : 5.6, subject2.name: 7.8, subject3.name: 9.0 })
     
     alin = Student("Spatariu Alin", 23, "Fagaras", "alin.spatariu@gmail.com", "123124300",
-                "superSecretPassword2", 4, [subject1, subject2, subject3], [5.6, 7.8, 9.0])
+                "superSecretPassword2", 4, {subject1.name : 7.0, subject2.name: 9.0, subject3: 10.0 })
 
     racu = Headmaster("Maria Racu", 45, "Fagaras", "maria.racu@ucc.ie", "100000001", "MariaRacu", [subject1, subject2])
     
+    print(raul.get_total_credits())
 
 
-
-    with(conn):
+    #with(conn):
         #insert_teacher(conn, derek2, racu)
         #insert_teacher(conn, derek3, racu)
         #insert_teacher(conn, derek4, racu)
@@ -402,14 +402,14 @@ if __name__ == '__main__':
         #delete_subject(conn, "CS4016", racu)
         #for i in raul.subjects:
             #insert_subject(conn, i, racu)
-        view_student_info(conn, "100000323", raul)
+        #view_student_info(conn, "100000323", raul)
         #view_all_teachers(conn, derek)
         #insert_teacher_subjects(conn, derek.subjects_taught, derek)
         #insert_student_subjects(conn, raul, racu)
 
 
         
-    conn.close()
+    #conn.close()
 
 
 
