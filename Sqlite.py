@@ -1,4 +1,3 @@
-from re import sub
 import sqlite3
 from sqlite3 import Connection, Error
 
@@ -149,6 +148,7 @@ def view_student_info(conn: Connection, student_id: str, person):
 
     if (type(person) == Student or Teacher or Headmaster):
         cur = conn.cursor()
+
         #first I want to get the subjects the student is taking
         sql1 = """SELECT s.subject_name, s.subject_code, s.subject_year, s.credits_worth
                   FROM 
@@ -168,8 +168,8 @@ def view_student_info(conn: Connection, student_id: str, person):
             subject_list.append(subject)
             subject_list_codes.append(subject.code)
 
-        for i in subject_list:
-            print(i)
+        #for i in subject_list:
+            #print(i)
         #now extract the marks the student got
         sql2 = """SELECT subject_code, mark
                   FROM marks
@@ -184,13 +184,8 @@ def view_student_info(conn: Connection, student_id: str, person):
             s_code, mark = i
             mark_list[s_code] = mark
 
-        #now I need to make a list with the corresponding order
-        mark_arr = [0] * len(mark_list)
 
-        for i in mark_list:
-            mark_arr[subject_list_codes.index(i)] = mark_list[i]
-
-        print(mark_arr)
+        #print(mark_list)
 
 
         sql3 = """SELECT  name, age, address, email, student_id, password, current_year
@@ -202,10 +197,14 @@ def view_student_info(conn: Connection, student_id: str, person):
         conn.commit()
 
         row = cur.fetchall()
+        
+        #print(row)
 
-        #current_student = Student(*row)
+        (name, age, address, email, student_id2, password, current_year) = row[0]
 
-        print(row)
+        current_student = Student(name, age, address, email, student_id2, password, current_year, mark_list)
+
+        print(current_student)
 
         cur.close()
 
@@ -266,11 +265,11 @@ def insert_student_subjects(conn: Connection, student: Student ,teacher):
                  VALUES(?, ?)"""
         cur = conn.cursor()
         
-        subjects = student.subjects
+        subjects = student.subjects()
 
-        for i in range(0, len(subjects)):
+        for i in subjects:
             
-            cur.execute(sql, (student.id, subjects[i].code))
+            cur.execute(sql, (student.id, i))
             conn.commit()
 
         cur.close()        
@@ -278,14 +277,14 @@ def insert_student_subjects(conn: Connection, student: Student ,teacher):
 def insert_student_marks(conn: Connection, student: Student, teacher): 
 
     if (type(teacher) == Teacher or Headmaster):
-        mark_list = student.marks_list
-        subject = student.subjects
+        mark_list = student.marks_list()
+        subject = student.subjects()
         cur = conn.cursor()
         for i in range(0, len(mark_list)):
             sql = """INSERT INTO marks(student_id, subject_code, mark)
                      VALUES(?, ?, ?)"""
             
-            cur.execute(sql, (student.id, subject[i].code , mark_list[i]))
+            cur.execute(sql, (student.id, subject[i] , mark_list[i]))
             conn.commit()
 
         cur.close()
@@ -294,7 +293,7 @@ def insert_student_marks(conn: Connection, student: Student, teacher):
 
 
 
-def create_tables(database):
+def create_tables(conn: Connection, database):
 
     sql_create_teachers_table = """ CREATE TABLE IF NOT EXISTS teachers(
                                             teacher_id text PRIMARY KEY,
@@ -348,7 +347,7 @@ def create_tables(database):
                                 );"""
     
     
-    conn = create_connection(database)
+    #conn = create_connection(database)
 
     if conn is not None:
         create_table(conn, sql_create_teachers_table)
@@ -360,56 +359,113 @@ def create_tables(database):
     else:
         print("Error! Cannot create the database connection")
     
-    return conn
+    #return conn
 
-if __name__ == '__main__':
+class Singleton:
+    _instance = None
+
+
+    def __new__(cls, database_file):
+        if cls._instance is None:
+            cls._instance = super(Singleton, cls).__new__(cls)
+            cls._instance.conn = sqlite3.connect(database_file)
+            intialize_DB(cls._instance.conn, database_file)
+
+        return cls._instance
     
-    database = r"C:\Users\raula\Desktop\facultate\anul 2 sem 1\Intermediate programming\Assignment\UniversitySystem\University.sqlite"
-
-    conn = create_tables(database)
+    def get_connection(self):
+        return self.conn
     
-    subject1 = Subject("AI", "CS4016", 4, 5)
-    subject2 = Subject("CA", "CS2014", 2, 5)
-    subject3 = Subject("AA", "CS4018", 4, 5)
-    subject4 = Subject("DB", "CS1016", 1, 5)
-
-    derek = Teacher("Derek Bridge", 50, "Cork", "derekbridge@ucc.ie", "100101001", "TheFinalBoss", [subject1, subject2, subject3])
-    derek2 = Teacher("Derek Bridge", 50, "Cork", "derekbridge@ucc.ie", "100101002", "TheFinalBoss", [subject1, subject2, subject3])
-    derek3 = Teacher("Derek Bridge", 50, "Cork", "derekbridge@ucc.ie", "100101003", "TheFinalBoss", [subject1, subject2, subject3])
-    derek4 = Teacher("Derek Bridge", 50, "Cork", "derekbridge@ucc.ie", "100101004", "TheFinalBoss", [subject1, subject2, subject3])
-
-    raul = Student("Spatariu Raul", 20, "Fagaras", "raulandrei2019@gmail.com", "100000323",
-                "superSecretPassword", 2, {subject1.name : 5.6, subject2.name: 7.8, subject3.name: 9.0 })
     
-    alin = Student("Spatariu Alin", 23, "Fagaras", "alin.spatariu@gmail.com", "123124300",
-                "superSecretPassword2", 4, {subject1.name : 7.0, subject2.name: 9.0, subject3: 10.0 })
-
-    racu = Headmaster("Maria Racu", 45, "Fagaras", "maria.racu@ucc.ie", "100000001", "MariaRacu", [subject1, subject2])
     
-    print(raul.get_total_credits())
 
+def intialize_DB(conn, database):
+    #database = r"C:\Users\raula\Desktop\facultate\anul 2 sem 1\Intermediate programming\Assignment\UniversitySystem\University.sqlite"
 
-    #with(conn):
-        #insert_teacher(conn, derek2, racu)
-        #insert_teacher(conn, derek3, racu)
-        #insert_teacher(conn, derek4, racu)
+    #db_instance = Singleton(database)
 
-        #insert_student(conn, alin, racu)
-        #insert_student(conn, raul, racu)
-        #insert_subject(conn, subject1, racu)
-        #delete_student(conn, "100000323", racu)
-        #delete_teacher(conn, "100101001", racu)
-        #delete_subject(conn, "CS4016", racu)
-        #for i in raul.subjects:
-            #insert_subject(conn, i, racu)
-        #view_student_info(conn, "100000323", raul)
-        #view_all_teachers(conn, derek)
-        #insert_teacher_subjects(conn, derek.subjects_taught, derek)
-        #insert_student_subjects(conn, raul, racu)
+    #conn = db_instance.get_connection
 
+    create_tables(conn, database)
 
-        
-    #conn.close()
+    #first year subjects
+    subject11 = Subject("Introduction to Relational Databases", "CS1106", 1, 5)
+    subject12 = Subject("Computer Hardware Organisation", "CS1110", 1, 5)
+    subject13 = Subject("Systems Organisation", "CS1111", 1, 5)
+    subject14 = Subject("Foundations of Computer Science I", "CS1112", 1, 5)
+    subject15 = Subject("Foundations of Computer Science II", "CS1113", 1, 5)
+    subject16 = Subject("Web Development I", "CS1116", 1, 5)
+    subject17 = Subject("Web Development II", "CS1117", 1, 5)
+    subject18 = Subject("Introduction to Programming", "CS1118", 1, 5)
+    first_year_subjects = [subject11, subject12, subject13, subject14, subject15, subject16, subject17, subject18]
 
+    #second year subjects
+    subject21 = Subject("Information Storage and Management I", "CS2208", 2, 5)
+    subject22 = Subject("Information Storage and Management II", "CS2209", 2, 5)
+    subject23 = Subject("Operating Systems 1", "CS2503", 2, 5)
+    subject24 = Subject("Network Computing", "CS2505", 2, 5)
+    subject25 = Subject("Operating Systems II", "CS2506", 2, 5)
+    subject26 = Subject("Computer Architecture", "CS2507", 2, 5)
+    subject27 = Subject("Intermediate Programming", "CS2513", 2, 5)
+    subject28 = Subject("Introduction to Java", "CS2514", 2, 5)
+    second_year_subjects = [subject21, subject22, subject23, subject24, subject25, subject26, subject27, subject28]
+
+    #third year subjects
+    subject31 = Subject("Advanced Programming with Java", "CS3318", 3, 5)
+    subject32 = Subject("Software Engineering", "CS3500", 3, 5)
+    subject33 = Subject("Cloud Infrastructure and Services", "CS3204", 3, 5)
+    subject34 = Subject("Networks and Data Communications", "CS3509", 3, 5)
+    subject35 = Subject("Ethical Hacking and Web Security", "CS3511", 3, 5)
+    subject36 = Subject("C-Programming for Microcontrollers", "CS3514", 3, 5)
+    third_year_subjects = [subject31, subject32, subject33, subject34, subject35, subject36]
+
+    #fourth year subjects
+    subject41 = Subject("Special Topics in Computing I", "CS4092", 4, 5)
+    subject42 = Subject("Special Topics in Computing II", "CS4093", 4, 5)
+    subject43 = Subject("Principles of Compilation", "CS4150", 4, 5)
+    subject44 = Subject("Parallel and Grid Computing", "CS4402", 4, 5)
+    subject45 = Subject("Multimedia Compression and Delivery", "CS4405", 4, 5)
+    subject46 = Subject("Artificial Intelligence I", "CS4618", 4, 5)
+    subject47 = Subject("Artificial Intelligence II", "CS4619", 4, 5)
+    subject48 = Subject("Algorithm Analysis", "CS4407", 4, 5)
+    fourth_year_subjects = [subject41, subject42, subject43, subject44, subject45, subject46, subject47, subject48]
+
+    #teachers
+    teacher1 = Teacher("Cathal Francis Hoare", 1, "Cork", "cathal.francis.hoare@ucc.ie", "100000001", "MasterOfOOP", [subject21, subject22, subject23, subject24, subject25, subject26, subject27, subject28])
+    teacher2 = Teacher("Derek Bridge", 1, "Cork", "derekbridge@ucc.ie", "100000002", "TheFinalBoss", [subject41, subject42, subject43, subject44, subject45, subject46, subject47, subject48])
+    teacher3 = Teacher("Gregory Provan", 50, "Cork", "derekbridge@ucc.ie", "100101003", "AlgorithmAnalyzer", [subject31, subject32, subject33, subject34, subject35, subject36])
+
+    #headmaster
+    headmaster = Headmaster("The BOSS", 1, "Cork", "the.Boss@ucc.ie", "100000000", "IamTheBOSS", [subject11, subject12, subject13])
+
+    #students
+    student1 = Student("Spatariu Raul", 20, "Fagaras", "raulandrei2019@gmail.com", "200000001",
+                "superSecretPassword", 2, {subject21.code: 0.0, subject22.code: 0.0, subject23.code: 0.0, subject24.code: 0.0, subject25.code: 0.0, subject26.code: 0.0, subject27.code: 0.0, subject28.code: 0.0})
+    student2 = Student("Spatariu Alin", 21, "Fagaras", "raul.is.the.best@gmail.com", "200000002",
+                       "anotherSecretPassword", 3, {subject31.code: 0.0, subject32.code: 0.0, subject33.code: 0.0, subject34.code: 0.0, subject35.code: 0.0, subject36.code: 0.0})
+    student3 = Student("Mircea Mihai", 22, "Fagaras", "mircea.mihai@gmail.com", "200000003",
+                       "anotherOtherSecretPassword", 4, {subject41.code: 0.0, subject42.code: 0.0, subject43.code: 0.0, subject44.code: 0.0, subject45.code: 0.0, subject46.code: 0.0, subject47.code: 0.0, subject48.code: 0.0})
+    student4 = Student("Ganea David", 19, "Fagaras", "ganea.david@gmail.com", "200000004",
+                       "anotherOtherAnotherSecretPassword", 1, {subject11.code: 0.0, subject12.code: 0.0, subject13.code: 0.0, subject14.code: 0.0, subject15.code: 0.0, subject16.code: 0.0, subject17.code: 0.0, subject18.code: 0.0})
+
+    whole_subject_lists = [first_year_subjects, second_year_subjects, third_year_subjects, fourth_year_subjects]
+
+    teacher_list = [headmaster, teacher1, teacher2, teacher3]
+
+    student_list = [student1, student2, student3, student4]
+
+    #insert all the subjects
+    #for subject_list in whole_subject_lists:
+    #    for subject in subject_list:
+    #        insert_subject(conn, subject, headmaster)
+
+    #insert all the teachers
+    for teacher in teacher_list:
+        insert_teacher(conn, teacher, headmaster)
+
+    #insert all students
+    for student in student_list:
+        insert_student(conn, student, headmaster)
+    
 
 
