@@ -1,5 +1,5 @@
 from Person import Person
-
+from Subject import Subject
 
 class Teacher(Person):
 
@@ -36,5 +36,16 @@ class Teacher(Person):
 
 
     def __str__(self):
-        return super().__str__() + ("id = %s\npassword = %s\nsubjects = %s" %(self._id, self._password, ",".join(f"{subject} " for subject in self._subjects_taught)) )
+        return super().__str__() + ("id = %s\npassword = %s\nsubjects = {\n%s}" %(self._id, "********", "".join(f"{subject}\n" for subject in self._subjects_taught)) )
 
+if __name__ == '__main__':
+    subject11 = Subject("Introduction to Relational Databases", "CS1106", 1, 5)
+    subject12 = Subject("Computer Hardware Organisation", "CS1110", 1, 5)
+    subject13 = Subject("Systems Organisation", "CS1111", 1, 5)
+    subject14 = Subject("Foundations of Computer Science I", "CS1112", 1, 5)
+    subject15 = Subject("Foundations of Computer Science II", "CS1113", 1, 5)
+
+
+    teacher = Teacher("ceva", 20, "asfas", "rafsaf", "123123000", "safasf", [subject11, subject12, subject13])
+
+    print(teacher)

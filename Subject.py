@@ -39,7 +39,7 @@ class Subject(object):
     year = property(get_year, set_year)
 
     def __str__(self):
-        return ("subject_name = %s code=%s year=%d credits=%d" %(self._name, self._code, self._year, self._credits_worth))
+        return (" subject_name= %s code= %s year= %d credits= %d" %(self._name, self._code, self._year, self._credits_worth))
     
         
 

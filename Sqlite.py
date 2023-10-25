@@ -170,6 +170,7 @@ def view_student_info(conn: Connection, student_id: str, person):
 
         #for i in subject_list:
             #print(i)
+
         #now extract the marks the student got
         sql2 = """SELECT subject_code, mark
                   FROM marks
@@ -211,17 +212,36 @@ def view_student_info(conn: Connection, student_id: str, person):
 def view_teacher_info(conn: Connection, teacher_id: str, teacher):
 
     if (type(teacher) == Teacher or Headmaster):
-        sql = """SELECT teacher_id, name, age, email, address
+        cur = conn.cursor()
+
+        sql1 = """SELECT ts.subject_code, ts.subject_name, ts.subject_year, ts.credits_worth
+                  FROM teacher_subjects AS ts
+                    JOIN teachers as t
+                    ON t.teacher_id = ts.teacher_id
+                  WHERE teacher_id = ? """
+        
+        sql2 = """SELECT  name, age, address, email, teacher_id, password
                  FROM teachers
                  WHERE teacher_id = ?
                  """
-        cur = conn.cursor()
-        cur.execute(sql, (teacher_id,))
+        cur.execute(sql1, (teacher_id))
         conn.commit()
 
-        row = cur.fetchall()
+        rows1 = cur.fetchall()
+        subject_list = []
 
-        print(row)
+        for row in rows1:
+            temp_subject = Subject(row)
+            subject_list.append(temp_subject)
+
+        cur.execute(sql2, (teacher_id,))
+        conn.commit()
+
+        row2 = cur.fetchall()
+
+        (name, age, address, email, id, password) = row2
+        temp_teacher = Teacher(name, age, address, email, id, password, subject_list)
+        print(temp_teacher)
 
         cur.close()
 
@@ -289,7 +309,72 @@ def insert_student_marks(conn: Connection, student: Student, teacher):
 
         cur.close()
 
-    
+def get_headMaster_from_DB(conn: Connection, teacher_id):
+
+        cur = conn.cursor()
+
+        sql1 = """SELECT ts.subject_code, ts.subject_name, ts.subject_year, ts.credits_worth
+                  FROM teacher_subjects AS ts
+                    JOIN teachers as t
+                    ON t.teacher_id = ts.teacher_id
+                  WHERE teacher_id = ? """
+        
+        sql2 = """SELECT  name, age, address, email, teacher_id, password
+                 FROM teachers
+                 WHERE teacher_id = ?
+                 """
+        cur.execute(sql1, (teacher_id))
+        conn.commit()
+
+        print(cur.fetchall())
+        rows1 = cur.fetchall()
+        
+        subject_list = []
+
+        for row in rows1:
+            temp_subject = Subject(row)
+            subject_list.append(temp_subject)
+
+        cur.execute(sql2, (teacher_id,))
+        conn.commit()
+
+        row2 = cur.fetchall()
+
+        (name, age, address, email, id, password) = row2
+        temp_headmaster = Headmaster(name, age, address, email, id, password, subject_list)
+        cur.close()       
+        return temp_headmaster
+
+
+def logIn_as_headmaster(conn: Connection, id, password):
+
+    cur = conn.cursor()
+    sql = """SELECT teacher_id, password
+             FROM teachers
+             WHERE teacher_id = ?;"""
+    cur.execute(sql, (id, ))
+    conn.commit()
+
+    row = cur.fetchall()
+    print(row)
+
+    if len(row) == 0:
+        print("Wrong id or password! Access Denied!")
+        cur.close()
+        exit()
+    else:
+        (correct_id, correct_password) = row[0]
+        if id == correct_id and correct_password == password:
+            curr_headmaster = get_headMaster_from_DB(conn, id)
+            print("Login successfull")
+        else:
+            print("Wrong id or password! Access Denied!")
+            cur.close()
+            exit()
+
+    cur.close()
+    return curr_headmaster
+
 
 
 
