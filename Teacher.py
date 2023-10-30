@@ -1,7 +1,8 @@
 from Person import Person
+from PrintOptionsInterface import PrintOptionsInterface
+from Subject import Subject
 
-
-class Teacher(Person):
+class Teacher(Person, PrintOptionsInterface):
 
     def __init__(self, name: str, age: int, address: str, email: str, id: str, password: str, subjects_taught):
         super().__init__(name, age, address, email)
@@ -34,7 +35,26 @@ class Teacher(Person):
 
     subjects_taught = property(get_subjects_taught, set_subjects_taught)
 
+    #here i override
+    def print_options(self):
+        print("1. View all students")
+        print("2. View information about a student")
+        print("3. View all teachers")
+        print("4. Display my information")
+        print("5. View all subjects")
+        print("6. Give marks to my students")
 
     def __str__(self):
-        return super().__str__() + ("id = %s\npassword = %s\nsubjects = %s" %(self._id, self._password, ",".join(f"{subject} " for subject in self._subjects_taught)) )
+        return super().__str__() + ("id = %s\npassword = %s\nsubjects = {\n%s}" %(self._id, "********", "".join(f"{subject}\n" for subject in self._subjects_taught)) )
 
+if __name__ == '__main__':
+    subject11 = Subject("Introduction to Relational Databases", "CS1106", 1, 5)
+    subject12 = Subject("Computer Hardware Organisation", "CS1110", 1, 5)
+    subject13 = Subject("Systems Organisation", "CS1111", 1, 5)
+    subject14 = Subject("Foundations of Computer Science I", "CS1112", 1, 5)
+    subject15 = Subject("Foundations of Computer Science II", "CS1113", 1, 5)
+
+
+    teacher = Teacher("ceva", 20, "asfas", "rafsaf", "123123000", "safasf", [subject11, subject12, subject13])
+
+    print(teacher)

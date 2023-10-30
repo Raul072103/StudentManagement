@@ -1,8 +1,9 @@
 from Person import Person
+from PrintOptionsInterface import PrintOptionsInterface
 from Subject import Subject
 
 
-class Student(Person):
+class Student(Person, PrintOptionsInterface):
 
     def __init__(self, name: str, age: int, address: str, email: str,
                   id: str, password: str, current_year: int, subject_mark: dict[str, float]):
@@ -75,6 +76,11 @@ class Student(Person):
         
     subject_mark = property(get_subject_mark, set_subject_mark)
 
+    #here i override the print_options method
+    def print_options(self):
+        print("1. View my information")
+        print("2. Print my total number of credits")
+        print("3. View all subjects")
 
     def __str__(self):
         return super().__str__() + ("id = %s\npassword = %s\ncurrent_year = %d\n" %(self._id, self._password, self._current_year) ) + str(self._subject_mark)
