@@ -1,6 +1,8 @@
 import sqlite3
 from sqlite3 import Connection, Error
 
+from zmq import Flag
+
 from Headmaster import Headmaster
 from Student import Student
 from Subject import Subject
@@ -39,7 +41,7 @@ def insert_teacher(conn: Connection, teacher: Teacher, headmaster: Headmaster):
         conn.commit()
         cur.close()
         #we also need to insert the subjects the teacher is teaching
-        insert_teacher_subjects(conn, teacher.subjects_taught, headmaster)
+        insert_teacher_subjects(conn, teacher, headmaster)
     else:
         print("You don't have the authorization to do this action!")
 
@@ -161,6 +163,10 @@ def view_student_info(conn: Connection, student_id: str, person):
         cur.execute(sql1, (student_id, ))
         rows1 = cur.fetchall()
 
+        #raise exceptions
+        if rows1 == None:
+            raise ValueError
+
         subject_list = []
         subject_list_codes = []
         for i in rows1:
@@ -168,8 +174,6 @@ def view_student_info(conn: Connection, student_id: str, person):
             subject_list.append(subject)
             subject_list_codes.append(subject.code)
 
-        #for i in subject_list:
-            #print(i)
 
         #now extract the marks the student got
         sql2 = """SELECT subject_code, mark
@@ -214,24 +218,29 @@ def view_teacher_info(conn: Connection, teacher_id: str, teacher):
     if (type(teacher) == Teacher or Headmaster):
         cur = conn.cursor()
 
-        sql1 = """SELECT ts.subject_code, ts.subject_name, ts.subject_year, ts.credits_worth
-                  FROM teacher_subjects AS ts
-                    JOIN teachers as t
-                    ON t.teacher_id = ts.teacher_id
-                  WHERE teacher_id = ? """
+        sql1 = """SELECT subject_name, subject_code, subject_year, credits_worth
+                  FROM subjects 
+                  WHERE subject_code IN 
+                  (
+                    SELECT subject_code
+                    FROM teacher_subjects
+                    WHERE teacher_id = ?
+                  ) """
         
         sql2 = """SELECT  name, age, address, email, teacher_id, password
                  FROM teachers
                  WHERE teacher_id = ?
                  """
-        cur.execute(sql1, (teacher_id))
+        
+        cur.execute(sql1, (teacher_id, ))
         conn.commit()
 
         rows1 = cur.fetchall()
         subject_list = []
 
         for row in rows1:
-            temp_subject = Subject(row)
+            (name, code, year, credits) = row
+            temp_subject = Subject(name, code, year, credits)
             subject_list.append(temp_subject)
 
         cur.execute(sql2, (teacher_id,))
@@ -239,9 +248,27 @@ def view_teacher_info(conn: Connection, teacher_id: str, teacher):
 
         row2 = cur.fetchall()
 
-        (name, age, address, email, id, password) = row2
+        (name, age, address, email, id, password) = row2[0]
         temp_teacher = Teacher(name, age, address, email, id, password, subject_list)
         print(temp_teacher)
+
+        cur.close()
+
+def view_all_students(conn: Connection, teacher):
+
+    if (type(teacher) == Teacher or Headmaster):
+        sql = """SELECT student_id, name, age, email, address,current_year
+                 FROM students;
+                 """
+        cur = conn.cursor()
+        cur.execute(sql)
+        conn.commit()
+
+        rows = cur.fetchall()
+
+        for row in rows:
+            (id, name, age, email, address, current_year) = row
+            print("name = %s, id = %s, age = %d, email = %s, address = %s, current_year = %d" %(id, name, age, email, address, current_year))
 
         cur.close()
 
@@ -262,7 +289,25 @@ def view_all_teachers(conn: Connection, teacher):
 
         cur.close()
 
-def insert_teacher_subjects(conn: Connection, subjects: Subject ,teacher):
+def view_all_subjects(conn: Connection):
+
+    sql = """SELECT subject_name, subject_code, subject_year, credits_worth
+            FROM subjects;"""
+    
+    cur = conn.cursor()
+    cur.execute(sql)
+    conn.commit()
+
+    rows = cur.fetchall()
+
+    for row in rows:
+        (name, code, year, credits) = row
+        curr_subject = Subject(name, code, year, credits)
+        print(curr_subject)
+
+    cur.close()
+
+def insert_teacher_subjects(conn: Connection, teacher , responsiblePerson):
 
     if (type(teacher) == Teacher or Headmaster):
         
@@ -270,6 +315,7 @@ def insert_teacher_subjects(conn: Connection, subjects: Subject ,teacher):
                  VALUES(?, ?)"""
         cur = conn.cursor()
         
+        subjects = teacher.subjects_taught
         for i in range(0, len(subjects)):
             
             cur.execute(sql, (teacher.id, subjects[i].code))
@@ -311,39 +357,41 @@ def insert_student_marks(conn: Connection, student: Student, teacher):
 
 def get_headMaster_from_DB(conn: Connection, teacher_id):
 
-        cur = conn.cursor()
+    cur = conn.cursor()
 
-        sql1 = """SELECT ts.subject_code, ts.subject_name, ts.subject_year, ts.credits_worth
+    sql1 = """SELECT ts.subject_code
                   FROM teacher_subjects AS ts
                     JOIN teachers as t
                     ON t.teacher_id = ts.teacher_id
-                  WHERE teacher_id = ? """
-        
-        sql2 = """SELECT  name, age, address, email, teacher_id, password
+                  WHERE t.teacher_id = ?;"""
+    sql2 = """SELECT subject_code, subject_name, subject_year, credits_worth
+                  FROM subjects
+                  WHERE subject_code = ? ;"""
+
+    sql3 = """SELECT  name, age, address, email, teacher_id, password
                  FROM teachers
-                 WHERE teacher_id = ?
-                 """
-        cur.execute(sql1, (teacher_id))
+                 WHERE teacher_id = ? ;"""
+    cur.execute(sql1, (teacher_id, ))
+    conn.commit()
+
+    rows1 = cur.fetchall()
+    subject_list = []
+
+    for code in rows1:
+        cur.execute(sql2, (*code, ))
         conn.commit()
 
-        print(cur.fetchall())
-        rows1 = cur.fetchall()
-        
-        subject_list = []
+        temp_row = cur.fetchall()
+        subject_list.append(temp_row)
 
-        for row in rows1:
-            temp_subject = Subject(row)
-            subject_list.append(temp_subject)
+    cur.execute(sql3, (teacher_id, ))
+    conn.commit()
+    rows1 = cur.fetchall()
 
-        cur.execute(sql2, (teacher_id,))
-        conn.commit()
-
-        row2 = cur.fetchall()
-
-        (name, age, address, email, id, password) = row2
-        temp_headmaster = Headmaster(name, age, address, email, id, password, subject_list)
-        cur.close()       
-        return temp_headmaster
+    (name, age, address, email, id, password) = rows1[0]
+    temp_headmaster = Headmaster(name, age, address, email, id, password, subject_list)
+    cur.close()       
+    return temp_headmaster
 
 
 def logIn_as_headmaster(conn: Connection, id, password):
@@ -356,7 +404,6 @@ def logIn_as_headmaster(conn: Connection, id, password):
     conn.commit()
 
     row = cur.fetchall()
-    print(row)
 
     if len(row) == 0:
         print("Wrong id or password! Access Denied!")
@@ -373,7 +420,195 @@ def logIn_as_headmaster(conn: Connection, id, password):
             exit()
 
     cur.close()
+    #print(type(curr_headmaster), '\n', curr_headmaster)
     return curr_headmaster
+
+
+def get_teacher_from_DB(conn: Connection, teacher_id):
+
+    cur = conn.cursor()
+
+    sql1 = """SELECT ts.subject_code
+                  FROM teacher_subjects AS ts
+                    JOIN teachers as t
+                    ON t.teacher_id = ts.teacher_id
+                  WHERE t.teacher_id = ?;"""
+    sql2 = """SELECT subject_code, subject_name, subject_year, credits_worth
+                  FROM subjects
+                  WHERE subject_code = ? ;"""
+
+    sql3 = """SELECT  name, age, address, email, teacher_id, password
+                 FROM teachers
+                 WHERE teacher_id = ? ;"""
+    cur.execute(sql1, (teacher_id, ))
+    conn.commit()
+
+    rows1 = cur.fetchall()
+    subject_list = []
+
+    for code in rows1:
+        cur.execute(sql2, (*code, ))
+        conn.commit()
+
+        temp_row = cur.fetchall()
+        subject_list.append(temp_row)
+
+    cur.execute(sql3, (teacher_id, ))
+    conn.commit()
+    rows1 = cur.fetchall()
+
+    (name, age, address, email, id, password) = rows1[0]
+    temp_teacher = Teacher(name, age, address, email, id, password, subject_list)
+    cur.close()       
+    return temp_teacher
+
+
+def logIn_as_teacher(conn: Connection, id, password):
+
+    cur = conn.cursor()
+    sql = """SELECT teacher_id, password
+             FROM teachers
+             WHERE teacher_id = ?;"""
+    cur.execute(sql, (id, ))
+    conn.commit()
+
+    row = cur.fetchall()
+
+    if len(row) == 0:
+        print("Wrong id or password! Access Denied!")
+        cur.close()
+        exit()
+    else:
+        (correct_id, correct_password) = row[0]
+        if id == correct_id and correct_password == password:
+            curr_teacher = get_teacher_from_DB(conn, id)
+            print("Login successfull")
+        else:
+            print("Wrong id or password! Access Denied!")
+            cur.close()
+            exit()
+
+    cur.close()
+    return curr_teacher
+
+
+def get_student_from_DB(conn: Connection, student_id):
+
+    cur = conn.cursor()
+
+    sql1 = """SELECT m.subject_code, m.mark
+                  FROM marks AS m
+                    JOIN students as s
+                    ON s.student_id = m.student_id
+                  WHERE s.student_id = ?;"""
+
+    sql2 = """SELECT  name, age, address, email, student_id, password, current_year
+                 FROM students
+                 WHERE student_id = ? ;"""
+    
+    cur.execute(sql1, (student_id, ))
+    conn.commit()
+
+    rows1 = cur.fetchall()
+
+    subject_mark = {}
+
+    for row in rows1:
+        (temp_code, temp_mark) = row
+        subject_mark[temp_code] = temp_mark
+
+    cur.execute(sql2, (student_id, ))
+    conn.commit()
+    rows2 = cur.fetchall()
+
+    (name, age, address, email, id, password, current_year) = rows2[0]
+    temp_student = Student(name, age, address, email, id, password, current_year, subject_mark)
+    cur.close()       
+    return temp_student
+
+
+def logIn_as_student(conn: Connection, id, password):
+
+    cur = conn.cursor()
+    sql = """SELECT student_id, password
+             FROM students
+             WHERE student_id = ?;"""
+    cur.execute(sql, (id, ))
+    conn.commit()
+
+    row = cur.fetchall()
+
+    if len(row) == 0:
+        print("Wrong id or password! Access Denied!")
+        cur.close()
+        exit()
+    else:
+        (correct_id, correct_password) = row[0]
+        if id == correct_id and correct_password == password:
+            curr_student = get_student_from_DB(conn, id)
+            print("Login successfull")
+        else:
+            print("Wrong id or password! Access Denied!")
+            cur.close()
+            exit()
+
+    cur.close()
+    return curr_student
+
+
+#give marks to the students you are teaching at
+def give_marks(conn: Connection, teacher):
+
+    if (type(teacher) == Teacher or Headmaster):
+        
+        print(teacher.subjects_taught)
+        subject_code_mark = input("Enter the subject you would like to mark: ")
+
+        print("All the students taking that subject are: ")
+        sql = """SELECT student_id
+                 FROM marks
+                 WHERE subject_code = ?; """
+        cur = conn.cursor()
+        cur.execute(sql, (subject_code_mark, ))
+        conn.commit()
+        
+        rows = cur.fetchall()
+
+        if rows == None:
+            raise ValueError
+
+        for row in rows:
+            print(row)
+        
+        student_id = input("The student you want to grade is: ")
+        mark = input("The mark you want to give is: ")
+
+        sql2 = """UPDATE marks
+                  SET mark = ?
+                  WHERE student_id = ? AND subject_code = ?; """
+        
+        cur.execute(sql2, (mark, student_id, subject_code_mark))
+        conn.commit()
+
+        cur.close()
+
+def get_subject_from_DB(conn: Connection, subject_code):
+
+    sql = """SELECT subject_name, subject_year, credits_worth
+             FROM subjects
+             WHERE subject_code = ?; """
+
+    cur = conn.cursor()
+    cur.execute(sql, (subject_code, ))
+    conn.commit()
+    
+    row = cur.fetchall()
+
+    (name, year, credits) = row[0]
+    curr_subject = Subject(name, subject_code, year, credits)
+    cur.close()
+
+    return curr_subject
 
 
 
@@ -554,3 +789,68 @@ def intialize_DB(conn, database):
     
 
 
+if __name__ == '__main__':
+
+    database_file = r"C:\Users\raula\Desktop\facultate\anul 2 sem 1\Intermediate programming\Assignment\UniversitySystem\University.sqlite"
+    
+    conn = create_connection(database_file)
+
+    #first year subjects
+    subject11 = Subject("Introduction to Relational Databases", "CS1106", 1, 5)
+    subject12 = Subject("Computer Hardware Organisation", "CS1110", 1, 5)
+    subject13 = Subject("Systems Organisation", "CS1111", 1, 5)
+    subject14 = Subject("Foundations of Computer Science I", "CS1112", 1, 5)
+    subject15 = Subject("Foundations of Computer Science II", "CS1113", 1, 5)
+    subject16 = Subject("Web Development I", "CS1116", 1, 5)
+    subject17 = Subject("Web Development II", "CS1117", 1, 5)
+    subject18 = Subject("Introduction to Programming", "CS1118", 1, 5)
+    first_year_subjects = [subject11, subject12, subject13, subject14, subject15, subject16, subject17, subject18]
+
+    #second year subjects
+    subject21 = Subject("Information Storage and Management I", "CS2208", 2, 5)
+    subject22 = Subject("Information Storage and Management II", "CS2209", 2, 5)
+    subject23 = Subject("Operating Systems 1", "CS2503", 2, 5)
+    subject24 = Subject("Network Computing", "CS2505", 2, 5)
+    subject25 = Subject("Operating Systems II", "CS2506", 2, 5)
+    subject26 = Subject("Computer Architecture", "CS2507", 2, 5)
+    subject27 = Subject("Intermediate Programming", "CS2513", 2, 5)
+    subject28 = Subject("Introduction to Java", "CS2514", 2, 5)
+    second_year_subjects = [subject21, subject22, subject23, subject24, subject25, subject26, subject27, subject28]
+
+    #third year subjects
+    subject31 = Subject("Advanced Programming with Java", "CS3318", 3, 5)
+    subject32 = Subject("Software Engineering", "CS3500", 3, 5)
+    subject33 = Subject("Cloud Infrastructure and Services", "CS3204", 3, 5)
+    subject34 = Subject("Networks and Data Communications", "CS3509", 3, 5)
+    subject35 = Subject("Ethical Hacking and Web Security", "CS3511", 3, 5)
+    subject36 = Subject("C-Programming for Microcontrollers", "CS3514", 3, 5)
+    third_year_subjects = [subject31, subject32, subject33, subject34, subject35, subject36]
+
+    #fourth year subjects
+    subject41 = Subject("Special Topics in Computing I", "CS4092", 4, 5)
+    subject42 = Subject("Special Topics in Computing II", "CS4093", 4, 5)
+    subject43 = Subject("Principles of Compilation", "CS4150", 4, 5)
+    subject44 = Subject("Parallel and Grid Computing", "CS4402", 4, 5)
+    subject45 = Subject("Multimedia Compression and Delivery", "CS4405", 4, 5)
+    subject46 = Subject("Artificial Intelligence I", "CS4618", 4, 5)
+    subject47 = Subject("Artificial Intelligence II", "CS4619", 4, 5)
+    subject48 = Subject("Algorithm Analysis", "CS4407", 4, 5)
+    fourth_year_subjects = [subject41, subject42, subject43, subject44, subject45, subject46, subject47, subject48]
+
+      #teachers
+    teacher1 = Teacher("Cathal Francis Hoare", 1, "Cork", "cathal.francis.hoare@ucc.ie", "100000001", "MasterOfOOP", [subject21, subject22, subject23, subject24, subject25, subject26, subject27, subject28])
+    teacher2 = Teacher("Derek Bridge", 1, "Cork", "derekbridge@ucc.ie", "100000002", "TheFinalBoss", [subject41, subject42, subject43, subject44, subject45, subject46, subject47, subject48])
+    teacher3 = Teacher("Gregory Provan", 50, "Cork", "derekbridge@ucc.ie", "100101003", "AlgorithmAnalyzer", [subject31, subject32, subject33, subject34, subject35, subject36])
+
+    #headmaster
+    headmaster = Headmaster("The BOSS", 1, "Cork", "the.Boss@ucc.ie", "100000000", "IamTheBOSS", [subject11, subject12, subject13])
+
+    teacher_list = [headmaster, teacher1, teacher2, teacher3, headmaster]
+
+    
+    for teacher in teacher_list:
+        insert_teacher(conn, teacher, headmaster)
+
+    conn.close()
+    
+    
