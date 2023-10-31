@@ -164,52 +164,52 @@ def view_student_info(conn: Connection, student_id: str, person):
         rows1 = cur.fetchall()
 
         #raise exceptions
-        if rows1 == None:
+        if not rows1:
             raise ValueError
-
-        subject_list = []
-        subject_list_codes = []
-        for i in rows1:
-            subject = Subject(*i)
-            subject_list.append(subject)
-            subject_list_codes.append(subject.code)
-
-
-        #now extract the marks the student got
-        sql2 = """SELECT subject_code, mark
-                  FROM marks
-                  WHERE student_id = ?"""
-        
-        cur.execute(sql2, (student_id, ))
-        rows2 = cur.fetchall()
-
-        #i make a dictionary because I am not sure if the marks will be inserted in the order I want
-        mark_list = {}
-        for i in rows2:
-            s_code, mark = i
-            mark_list[s_code] = mark
+        else:
+            subject_list = []
+            subject_list_codes = []
+            for i in rows1:
+                subject = Subject(*i)
+                subject_list.append(subject)
+                subject_list_codes.append(subject.code)
 
 
-        #print(mark_list)
+            #now extract the marks the student got
+            sql2 = """SELECT subject_code, mark
+                    FROM marks
+                    WHERE student_id = ?"""
+            
+            cur.execute(sql2, (student_id, ))
+            rows2 = cur.fetchall()
+
+            #i make a dictionary because I am not sure if the marks will be inserted in the order I want
+            mark_list = {}
+            for i in rows2:
+                s_code, mark = i
+                mark_list[s_code] = mark
 
 
-        sql3 = """SELECT  name, age, address, email, student_id, password, current_year
-                 FROM students
-                 WHERE student_id = ?
-                 """
-        
-        cur.execute(sql3, (student_id,))
-        conn.commit()
+            #print(mark_list)
 
-        row = cur.fetchall()
-        
-        #print(row)
 
-        (name, age, address, email, student_id2, password, current_year) = row[0]
+            sql3 = """SELECT  name, age, address, email, student_id, password, current_year
+                    FROM students
+                    WHERE student_id = ?
+                    """
+            
+            cur.execute(sql3, (student_id,))
+            conn.commit()
 
-        current_student = Student(name, age, address, email, student_id2, password, current_year, mark_list)
+            row = cur.fetchall()
+            
+            #print(row)
 
-        print(current_student)
+            (name, age, address, email, student_id2, password, current_year) = row[0]
+
+            current_student = Student(name, age, address, email, student_id2, password, current_year, mark_list)
+
+            print(current_student)
 
         cur.close()
 
